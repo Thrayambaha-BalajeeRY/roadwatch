@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 1
+names: ['Pothole']
+
+roboflow:
+  workspace: smartathon
+  project: new-pothole-detection
+  version: 1
+  license: Public Domain
+  url: https://universe.roboflow.com/smartathon/new-pothole-detection/dataset/1

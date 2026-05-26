@@ -1,0 +1,6 @@
+names:
+- Pothole
+nc: 1
+path: C:\Users\H\OneDrive\Desktop\roadwatch\ai\roaddataset
+train: C:\Users\H\OneDrive\Desktop\roadwatch\ai\roaddataset\train\images
+val: C:\Users\H\OneDrive\Desktop\roadwatch\ai\roaddataset\valid\images

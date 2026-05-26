@@ -1,0 +1,14 @@
+ultralytics
+fastapi
+uvicorn
+python-multipart
+pymongo
+python-dotenv
+anthropic
+pillow
+numpy
+roboflow
+opencv-python
+torch
+torchvision
+requests
