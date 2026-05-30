@@ -1,0 +1,280 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+@import "leaflet/dist/leaflet.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --color-void: var(--void);
+  --color-deep: var(--deep);
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-elevated: var(--elevated);
+
+  --color-border: var(--border);
+  --color-border-lg: var(--border-lg);
+  --color-cyan: var(--cyan);
+  --color-cyan-dim: var(--cyan-dim);
+  --color-green: var(--green);
+  --color-yellow: var(--yellow);
+  --color-orange: var(--orange);
+  --color-red: var(--red);
+  --color-purple: var(--purple);
+
+  --color-text: var(--text);
+  --color-text-dim: var(--text-dim);
+  --color-text-ghost: var(--text-ghost);
+
+  --color-background: var(--deep);
+  --color-foreground: var(--text);
+  --color-primary: var(--cyan);
+  --color-primary-foreground: #000;
+  --color-secondary: var(--card);
+  --color-secondary-foreground: var(--text);
+  --color-muted: var(--card);
+  --color-muted-foreground: var(--text-dim);
+  --color-accent: var(--elevated);
+  --color-accent-foreground: var(--text);
+  --color-destructive: var(--red);
+  --color-destructive-foreground: #fff;
+  --color-input: var(--border);
+  --color-ring: var(--cyan);
+  --color-popover: var(--card);
+  --color-popover-foreground: var(--text);
+  --color-card-foreground: var(--text);
+
+  --radius-lg: 12px;
+  --radius-md: 8px;
+  --radius-sm: 6px;
+}
+
+:root {
+  --void: #000000;
+  --deep: #020810;
+  --surface: #060d1a;
+  --card: #0a1628;
+  --elevated: #0f1f38;
+  --overlay: rgba(6, 13, 26, 0.95);
+
+  --border: #1a3050;
+  --border-lg: #0f2040;
+  --glow-line: rgba(0, 212, 255, 0.15);
+
+  --cyan: #00d4ff;
+  --cyan-dim: #0099bb;
+  --cyan-glow: rgba(0, 212, 255, 0.2);
+
+  --green: #00ff88;
+  --yellow: #ffd600;
+  --orange: #ff7c2a;
+  --red: #ff3b5c;
+  --purple: #b060ff;
+
+  --text: #f0f8ff;
+  --text-dim: #7ab0cc;
+  --text-ghost: #2a4060;
+
+  --grad-hero: radial-gradient(ellipse 80% 60% at 50% -20%, rgba(0, 212, 255, 0.15) 0%, transparent 60%);
+  --grad-card: linear-gradient(135deg, rgba(0, 212, 255, 0.05) 0%, rgba(0, 255, 136, 0.02) 100%);
+  --grad-btn: linear-gradient(135deg, #00d4ff 0%, #0099bb 100%);
+
+  --radius: 12px;
+  --background: var(--deep);
+  --foreground: var(--text);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html,
+  body {
+    background: var(--deep);
+    color: var(--text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: rgba(0, 212, 255, 0.3);
+    color: #fff;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--deep); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: var(--cyan-dim); }
+
+/* Grid background pattern */
+.bg-grid {
+  background-image:
+    linear-gradient(rgba(0, 212, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  animation: grid-move 30s linear infinite;
+}
+
+@keyframes grid-move {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 40px; }
+}
+
+.bg-grid-sm {
+  background-image:
+    linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Hero gradient */
+.bg-hero-glow {
+  background: var(--grad-hero);
+}
+
+/* Gradient text */
+.text-gradient-cyan {
+  background: linear-gradient(90deg, #00d4ff 0%, #00ff88 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.text-gradient-fire {
+  background: linear-gradient(135deg, #ff3b5c 0%, #ff7c2a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.text-glow-cyan {
+  text-shadow: 0 0 30px rgba(0, 212, 255, 0.4);
+}
+
+/* Premium button */
+.btn-primary {
+  background: var(--grad-btn);
+  color: #000;
+  font-family: var(--font-display);
+  font-weight: 700;
+  padding: 14px 32px;
+  border-radius: 10px;
+  box-shadow: 0 4px 30px rgba(0, 212, 255, 0.35), 0 0 0 1px rgba(0, 212, 255, 0.3);
+  transition: transform 0.2s ease;
+}
+
+.btn-ghost {
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  color: var(--cyan);
+  background: transparent;
+  padding: 14px 32px;
+  border-radius: 10px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  transition: background 0.2s ease;
+}
+
+.btn-ghost:hover {
+  background: rgba(0, 212, 255, 0.06);
+}
+
+/* Card */
+.surface-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+/* Pulse marker for leaflet */
+@keyframes pulse-marker {
+  0% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+  70% { box-shadow: 0 0 0 18px transparent; opacity: 0.4; }
+  100% { box-shadow: 0 0 0 0 transparent; opacity: 1; }
+}
+
+.pulse-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  animation: pulse-marker 2s infinite;
+}
+
+/* Scan sweep */
+@keyframes scan-sweep {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+.scan-line {
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  box-shadow: 0 0 20px var(--cyan);
+  animation: scan-sweep 2s linear infinite;
+}
+
+/* Shimmer skeleton */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, var(--card) 25%, var(--elevated) 50%, var(--card) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Leaflet dark popup */
+.leaflet-container {
+  background: var(--surface) !important;
+  font-family: var(--font-sans);
+}
+.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+  background: var(--card) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border);
+  border-radius: 10px !important;
+}
+.leaflet-popup-content {
+  margin: 12px 14px !important;
+  font-size: 12px;
+}
+.leaflet-control-zoom a {
+  background: var(--card) !important;
+  color: var(--cyan) !important;
+  border-color: var(--border) !important;
+}
+
+/* Underline link hover */
+.nav-link {
+  position: relative;
+  color: var(--text-dim);
+  transition: color 0.2s;
+}
+.nav-link::after {
+  content: '';
+  position: absolute;
+  left: 0; bottom: -4px;
+  width: 100%; height: 1px;
+  background: var(--cyan);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.25s ease;
+}
+.nav-link:hover { color: var(--text); }
+.nav-link:hover::after, .nav-link.active::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+.nav-link.active { color: var(--cyan); }
