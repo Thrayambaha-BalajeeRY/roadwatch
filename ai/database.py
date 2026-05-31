@@ -5,8 +5,6 @@ import os
 
 load_dotenv()
 
-# Initialize Roboflow with your API key
-rf = Roboflow(api_key=os.getenv("ROBOFLOW_API_KEY"))
 
 # Download the real pothole dataset
 # This is a real dataset with 665 labelled road images
