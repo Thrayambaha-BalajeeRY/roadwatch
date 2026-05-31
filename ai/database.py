@@ -1,21 +1,6 @@
-from roboflow import Roboflow
-from dotenv import load_dotenv
 from pymongo import MongoClient
+from dotenv import load_dotenv
 import os
-
-load_dotenv()
-
-
-# Download the real pothole dataset
-# This is a real dataset with 665 labelled road images
-project = rf.workspace("thrayambahas-workspace-lonrp").project("pothole-detection-th8es")
-version = project.version(1)
-dataset = version.download("yolov8")
-
-print("Dataset downloaded successfully!")
-print(f"Location: {dataset.location}")
-
-
 
 load_dotenv()
 
@@ -25,6 +10,8 @@ db = client["roadwatch"]
 roads_col = db["roads"]
 complaints_col = db["complaints"]
 detections_col = db["detections"]
+users_col = db["users"]
+rate_col = db["rate_limits"]
 
 def test_connection():
     try:
@@ -34,6 +21,3 @@ def test_connection():
     except Exception as e:
         print(f"MongoDB connection failed: {e}")
         return False
-
-if __name__ == "__main__":
-    test_connection()
