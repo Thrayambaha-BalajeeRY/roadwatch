@@ -8,9 +8,9 @@ groq
 pillow
 numpy
 roboflow
-opencv-python-headless
 torch
 torchvision
 requests
 jose
 passlib
+opencv-python-headless==4.10.0.84
