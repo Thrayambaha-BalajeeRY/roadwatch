@@ -13,3 +13,4 @@ torch
 torchvision
 requests
 jose
+passlib
