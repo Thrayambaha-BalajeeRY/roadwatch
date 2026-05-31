@@ -35,6 +35,7 @@ app.add_middleware(
         "http://localhost:5173",
         "http://localhost:3000",
         "http://localhost:8000",
+        "https://roadwatch-api-6339.onrender.com",
         "https://*.vercel.app",
         "*"
     ],
