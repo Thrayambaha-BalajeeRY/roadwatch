@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from ultralytics import YOLO
 from datetime import datetime
-import shutil, os, sys
+import shutil, os, sys, gc
 
 # ── Fix all import paths ──
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -36,7 +36,6 @@ app.add_middleware(
         "http://localhost:3000",
         "http://localhost:8000",
         "https://*.vercel.app",
-        "https://roadwatch-production-e44e.up.railway.app",
         "*"
     ],
     allow_methods=["*"],
@@ -44,19 +43,25 @@ app.add_middleware(
     allow_credentials=True
 )
 
-# ── Load Trained Model ──
+# ── Lazy Model Loader ──
 MODEL_PATH = os.path.join(
     os.path.dirname(__file__),
     "models", "roadwatch", "weights", "best.pt"
 )
 
-if os.path.exists(MODEL_PATH):
-    model = YOLO(MODEL_PATH)
-    print(f"Loaded trained model: {MODEL_PATH}")
-else:
-    fallback = os.path.join(os.path.dirname(__file__), "yolov8s.pt")
-    model = YOLO(fallback)
-    print(f"Trained model not found — using fallback: {fallback}")
+_model = None  # Don't load at startup
+
+def get_model():
+    global _model
+    if _model is None:
+        if os.path.exists(MODEL_PATH):
+            _model = YOLO(MODEL_PATH)
+            print(f"Loaded trained model: {MODEL_PATH}")
+        else:
+            fallback = os.path.join(os.path.dirname(__file__), "yolov8s.pt")
+            _model = YOLO(fallback)
+            print(f"Trained model not found — using fallback: {fallback}")
+    return _model
 
 # Seed admin on startup
 try:
@@ -108,7 +113,9 @@ async def detect(file: UploadFile = File(...)):
     with open(path, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    results = model(path)
+    # ✅ Load model only when first request comes in
+    results = get_model()(path)
+
     defects = []
     for result in results:
         for box in result.boxes:
@@ -134,6 +141,9 @@ async def detect(file: UploadFile = File(...)):
 
     if os.path.exists(path):
         os.remove(path)
+
+    # ✅ Free memory after inference
+    gc.collect()
 
     if defects:
         severities = [d['severity'] for d in defects]
