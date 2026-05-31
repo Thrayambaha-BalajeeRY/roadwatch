@@ -36,7 +36,7 @@ app.add_middleware(
         "http://localhost:3000",
         "http://localhost:8000",
         "https://roadwatch-api-6339.onrender.com",
-        "https://roadwatch-nu.vercel.app/",
+        "https://street-eye-dash.lovable.app",
         "*"
     ],
     allow_methods=["*"],
