@@ -1,13 +1,31 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from ultralytics import YOLO
-from database import detections_col
+from datetime import datetime
+import shutil, os, sys
+
+# ── Fix all import paths ──
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from database import detections_col, complaints_col
 from chatbot import chat, file_complaint
 from search import (smart_search, format_data,
                     all_roads_data, worst_roads,
-                    budget_mismanagement)
-from datetime import datetime
-import shutil, os
+                    budget_mismanagement, search_road)
+from security.Auth import (
+    login_user, register_user,
+    get_current_user, seed_admin
+)
+from security.ratelimit import check_limit
+from security.validator import (
+    validate_text, validate_image,
+    validate_complaint
+)
+from security.hasher import (
+    hash_complaint, hash_image, make_ref
+)
 
 app = FastAPI(title="RoadWatch API")
 
@@ -25,14 +43,24 @@ app.add_middleware(
 )
 
 # ── Load Trained Model ──
-MODEL_PATH = "models/roadwatch/weights/best.pt"
+MODEL_PATH = os.path.join(
+    os.path.dirname(__file__),
+    "models", "roadwatch", "weights", "best.pt"
+)
 
 if os.path.exists(MODEL_PATH):
     model = YOLO(MODEL_PATH)
     print(f"Loaded trained model: {MODEL_PATH}")
 else:
-    model = YOLO("yolov8n.pt")
-    print("Trained model not found — using base model")
+    fallback = os.path.join(os.path.dirname(__file__), "yolov8s.pt")
+    model = YOLO(fallback)
+    print(f"Trained model not found — using fallback: {fallback}")
+
+# Seed admin on startup
+try:
+    seed_admin()
+except Exception as e:
+    print(f"Admin seed skipped: {e}")
 
 
 # ══════════════════════════════
@@ -55,15 +83,10 @@ def root():
 async def chat_api(data: dict):
     msg = data.get("message", "")
     history = data.get("history", [])
-
     if not msg:
         return {"error": "Message cannot be empty"}
-
     reply, updated = chat(msg, history)
-    return {
-        "reply": reply,
-        "history": updated
-    }
+    return {"reply": reply, "history": updated}
 
 
 # ══════════════════════════════
@@ -72,33 +95,24 @@ async def chat_api(data: dict):
 
 @app.post("/detect")
 async def detect(file: UploadFile = File(...)):
-
-    # Validate file type
     if not file.filename.lower().endswith(
             ('.jpg', '.jpeg', '.png', '.webp')):
         return {"error": "Only image files allowed"}
 
-    # Create uploads folder
-    os.makedirs("uploads", exist_ok=True)
-    path = f"uploads/{file.filename}"
+    upload_dir = os.path.join(os.path.dirname(__file__), "uploads")
+    os.makedirs(upload_dir, exist_ok=True)
+    path = os.path.join(upload_dir, file.filename)
 
-    # Save file
     with open(path, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    # Run detection
     results = model(path)
-
     defects = []
     for result in results:
         for box in result.boxes:
             conf = float(box.conf[0])
             defects.append({
-                "type": (
-                    "Pothole"
-                    if conf > 0.5
-                    else "Road Defect"
-                ),
+                "type": "Pothole" if conf > 0.5 else "Road Defect",
                 "confidence_pct": round(conf * 100, 1),
                 "severity": (
                     "Critical" if conf > 0.7
@@ -108,7 +122,6 @@ async def detect(file: UploadFile = File(...)):
                 "bbox": box.xyxy[0].tolist()
             })
 
-    # Save to MongoDB
     record = {
         "filename": file.filename,
         "defects": defects,
@@ -117,11 +130,9 @@ async def detect(file: UploadFile = File(...)):
     }
     detections_col.insert_one(record)
 
-    # Delete temp file
     if os.path.exists(path):
         os.remove(path)
 
-    # Return result
     if defects:
         severities = [d['severity'] for d in defects]
         worst = (
@@ -129,10 +140,7 @@ async def detect(file: UploadFile = File(...)):
             else "Moderate" if "Moderate" in severities
             else "Minor"
         )
-        message = (
-            f"Found {len(defects)} defect(s) — "
-            f"most severe: {worst}"
-        )
+        message = f"Found {len(defects)} defect(s) — most severe: {worst}"
     else:
         message = "No defects detected"
 
@@ -164,7 +172,6 @@ def get_budget():
 
 @app.get("/roads/{name}")
 def get_road(name: str):
-    from search import search_road
     r = search_road(name)
     return r if r else {"error": "Road not found"}
 
@@ -175,31 +182,67 @@ def get_road(name: str):
 
 @app.get("/complaints")
 def get_complaints():
-    from database import complaints_col
-    return list(
-        complaints_col.find({}, {"_id": 0})
-    )
+    return list(complaints_col.find({}, {"_id": 0}))
 
 
 @app.post("/complaint")
 def create_complaint(data: dict):
-
     road_name = data.get("road_name", "")
     defect = data.get("defect", "")
     severity = data.get("severity", "Moderate")
 
     if not road_name:
         return {"error": "Road name required"}
-
     if not defect:
         return {"error": "Defect description required"}
-
-    if severity not in [
-        "Minor", "Moderate", "Critical"
-    ]:
-        return {
-            "error": "Severity must be Minor Moderate or Critical"
-        }
+    if severity not in ["Minor", "Moderate", "Critical"]:
+        return {"error": "Severity must be Minor Moderate or Critical"}
 
     c = file_complaint(road_name, defect, severity)
     return c if c else {"error": "Road not found"}
+
+
+# ══════════════════════════════
+# AUTH
+# ══════════════════════════════
+
+@app.post("/register")
+async def register(request: Request, data: dict):
+    ip = request.client.host
+    limit = check_limit(ip, "register")
+    if not limit["allowed"]:
+        return JSONResponse(
+            status_code=429,
+            content={"error": limit["message"]}
+        )
+    return register_user(
+        data.get("name"),
+        data.get("email"),
+        data.get("password")
+    )
+
+
+@app.post("/login")
+async def login(request: Request, data: dict):
+    ip = request.client.host
+    limit = check_limit(ip, "login")
+    if not limit["allowed"]:
+        return JSONResponse(
+            status_code=429,
+            content={"error": limit["message"]}
+        )
+    return login_user(
+        data.get("email", ""),
+        data.get("password", "")
+    )
+
+
+@app.get("/my-complaints")
+async def my_complaints(request: Request):
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    user = get_current_user(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    return list(complaints_col.find(
+        {"filed_by": user["email"]}, {"_id": 0}
+    ))
